@@ -23,16 +23,40 @@ jobs:
           sudo install -m 0755 juju /usr/local/bin/juju
           juju version
 
-      - name: Download controller charm by revision
+      - name: Download controller charm by revision with retries
         run: |
           set -euo pipefail
 
           mkdir -p out
 
-          juju download juju-controller \
-            --revision 237 \
-            --filepath ./out/juju-controller-rev237.charm \
-            --no-progress
+          echo "===== DNS ====="
+          getent ahostsv4 api.charmhub.io || true
+
+          for ip in 185.125.188.55 185.125.188.58 ""; do
+            echo
+            echo "===== try ip='${ip:-dns-default}' ====="
+
+            sudo sed -i '/api.charmhub.io/d' /etc/hosts
+            if [ -n "$ip" ]; then
+              echo "$ip api.charmhub.io" | sudo tee -a /etc/hosts
+            fi
+
+            curl -4 -vkI --connect-timeout 10 --max-time 20 https://api.charmhub.io/ || true
+
+            rm -f ./out/juju-controller-rev237.charm
+
+            if timeout 120 juju download juju-controller \
+              --revision 237 \
+              --filepath ./out/juju-controller-rev237.charm \
+              --no-progress; then
+              echo "Download OK via ${ip:-dns-default}"
+              break
+            fi
+
+            sleep 10
+          done
+
+          test -s ./out/juju-controller-rev237.charm
 
           sha256sum ./out/juju-controller-rev237.charm | tee ./out/SHA256SUMS
           ls -lh ./out
@@ -40,6 +64,6 @@ jobs:
       - name: Upload charm artifact
         uses: actions/upload-artifact@v4
         with:
-          name: juju-controller-3.6-stable-ubuntu24.04-amd64
+          name: juju-controller-rev237
           path: out/
           retention-days: 7
