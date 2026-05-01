@@ -23,20 +23,18 @@ jobs:
           sudo install -m 0755 juju /usr/local/bin/juju
           juju version
 
-      - name: Download juju-controller charm
+      - name: Download controller charm by revision
         run: |
           set -euo pipefail
 
           mkdir -p out
 
           juju download juju-controller \
-            --channel 3.6/stable \
-            --base ubuntu@24.04 \
-            --arch amd64 \
-            --filepath ./out/juju-controller-3.6-stable-ubuntu24.04-amd64.charm \
+            --revision 237 \
+            --filepath ./out/juju-controller-rev237.charm \
             --no-progress
 
-          sha256sum ./out/juju-controller-3.6-stable-ubuntu24.04-amd64.charm | tee ./out/SHA256SUMS
+          sha256sum ./out/juju-controller-rev237.charm | tee ./out/SHA256SUMS
           ls -lh ./out
 
       - name: Upload charm artifact
