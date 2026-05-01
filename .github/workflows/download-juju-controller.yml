@@ -1,0 +1,47 @@
+name: Download juju-controller charm
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  download:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Install Juju CLI
+        run: |
+          set -euo pipefail
+
+          VERSION="3.6.21"
+
+          curl -fL -O "https://github.com/juju/juju/releases/download/v${VERSION}/juju-${VERSION}-linux-amd64.tar.xz"
+          tar xf "juju-${VERSION}-linux-amd64.tar.xz"
+
+          sudo install -m 0755 juju /usr/local/bin/juju
+          juju version
+
+      - name: Download juju-controller charm
+        run: |
+          set -euo pipefail
+
+          mkdir -p out
+
+          juju download juju-controller \
+            --channel 3.6/stable \
+            --base ubuntu@24.04 \
+            --arch amd64 \
+            --filepath ./out/juju-controller-3.6-stable-ubuntu24.04-amd64.charm \
+            --no-progress
+
+          sha256sum ./out/juju-controller-3.6-stable-ubuntu24.04-amd64.charm | tee ./out/SHA256SUMS
+          ls -lh ./out
+
+      - name: Upload charm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: juju-controller-3.6-stable-ubuntu24.04-amd64
+          path: out/
+          retention-days: 7
